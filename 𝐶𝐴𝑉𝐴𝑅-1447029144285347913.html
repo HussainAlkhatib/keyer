@@ -1,0 +1,2643 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Export</title>
+    <style>
+        :root {
+            --background-primary: #36393f;
+            --background-secondary: #2f3136;
+            --background-tertiary: #202225;
+            --header-primary: #ffffff;
+            --header-secondary: #b9bbbe;
+            --text-normal: #dcddde;
+            --text-muted: #72767d;
+            --brand-experiment: #5865f2;
+            --green: #43b581;
+            --yellow: #faa61a;
+            --red: #f04747;
+            --border-color: #40444b;
+            --member-role-gap: 4px;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: var(--background-secondary);
+            color: var(--text-normal);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            background-color: var(--background-tertiary);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .header img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin-right: 20px;
+        }
+
+        .header-info h1 {
+            margin: 0;
+            color: var(--header-primary);
+        }
+
+        .header-info p {
+            margin: 5px 0 0;
+            color: var(--header-secondary);
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--background-tertiary);
+        }
+
+        .tab-button {
+            padding: 10px 20px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            color: var(--header-secondary);
+            font-size: 16px;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab-button.active {
+            color: var(--header-primary);
+            border-bottom: 2px solid var(--brand-experiment);
+        }
+
+        .tab-content {
+            display: none;
+            background-color: var(--background-tertiary);
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--background-secondary);
+            color: var(--text-normal);
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: var(--background-primary);
+            color: var(--header-secondary);
+        }
+
+        .role-color-dot {
+            height: 15px;
+            width: 15px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .channel-type::before {
+            content: '# ';
+            color: var(--text-muted);
+        }
+
+        .channel-type.GUILD_VOICE::before {
+            content: '🔊 ';
+        }
+
+        .channel-type.GUILD_CATEGORY::before {
+            content: '📁 ';
+        }
+
+        .emoji-img {
+            width: 24px;
+            height: 24px;
+            vertical-align: middle;
+        }
+
+        /* Member List Styles */
+        .member-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .member-card {
+            display: flex;
+            align-items: center;
+            background-color: var(--background-secondary);
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid var(--border-color);
+        }
+
+        .member-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 15px;
+        }
+
+        .member-info h3 {
+            margin: 0;
+            font-size: 16px;
+        }
+
+        .member-roles {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--member-role-gap);
+            margin-top: 5px;
+        }
+
+        .member-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div id="header" class="header"></div>
+
+        <div class="tabs">
+            <button class="tab-button active" onclick="openTab('roles', this)">Roles</button>
+            <button class="tab-button" onclick="openTab('channels', this)">Channels</button>
+            <button class="tab-button" onclick="openTab('emojis', this)">Emojis</button>
+            <button class="tab-button" onclick="openTab('bans', this)">Bans</button>
+            <button class="tab-button" onclick="openTab('members', this)">Members</button>
+        </div>
+
+        <input type="text" id="searchInput" onkeyup="search()" placeholder="Search...">
+
+        <div id="roles" class="tab-content active">
+            <h2>Roles</h2>
+            <table id="roles-table"></table>
+        </div>
+        <div id="channels" class="tab-content">
+            <h2>Channels</h2>
+            <table id="channels-table"></table>
+        </div>
+        <div id="emojis" class="tab-content">
+            <h2>Emojis</h2>
+            <table id="emojis-table"></table>
+        </div>
+        <div id="bans" class="tab-content">
+            <h2>Banned Users</h2>
+            <table id="bans-table"></table>
+        </div>
+        <div id="members" class="tab-content">
+            <h2 id="members-header">Members</h2>
+            <div id="member-list" class="member-list"></div>
+        </div>
+    </div>
+
+    <script>
+        // Parse the JSON data immediately.
+        // The placeholder will be replaced by the script with a valid JSON string.
+        const serverData = JSON.parse(`{
+  "name": "𝐶𝐴𝑉𝐴𝑅",
+  "id": "1447029144285347913",
+  "iconURL": "https://cdn.discordapp.com/icons/1447029144285347913/5baa55edcd320eeb86d09fc3f8021243.webp?size=256",
+  "memberCount": 3,
+  "owner": "ahmed_2qw",
+  "createdAt": "Sun, 07 Dec 2025 00:57:12 GMT",
+  "roles": [
+    {
+      "id": "1447031450384732282",
+      "name": "blaze",
+      "color": "#ffcc00",
+      "hoist": false,
+      "position": 83,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "KICK_MEMBERS",
+        "BAN_MEMBERS",
+        "ADMINISTRATOR",
+        "MANAGE_CHANNELS",
+        "MANAGE_GUILD",
+        "ADD_REACTIONS",
+        "VIEW_AUDIT_LOG",
+        "PRIORITY_SPEAKER",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "SEND_MESSAGES",
+        "SEND_TTS_MESSAGES",
+        "MANAGE_MESSAGES",
+        "EMBED_LINKS",
+        "ATTACH_FILES",
+        "READ_MESSAGE_HISTORY",
+        "MENTION_EVERYONE",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "MUTE_MEMBERS",
+        "DEAFEN_MEMBERS",
+        "MOVE_MEMBERS",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "MANAGE_NICKNAMES",
+        "MANAGE_ROLES",
+        "MANAGE_WEBHOOKS",
+        "MANAGE_EMOJIS_AND_STICKERS",
+        "USE_APPLICATION_COMMANDS",
+        "MANAGE_EVENTS",
+        "MANAGE_THREADS",
+        "USE_PUBLIC_THREADS",
+        "CREATE_PUBLIC_THREADS",
+        "USE_PRIVATE_THREADS",
+        "CREATE_PRIVATE_THREADS",
+        "USE_EXTERNAL_STICKERS",
+        "SEND_MESSAGES_IN_THREADS",
+        "START_EMBEDDED_ACTIVITIES",
+        "MODERATE_MEMBERS",
+        "USE_SOUNDBOARD",
+        "CREATE_GUILD_EXPRESSIONS",
+        "CREATE_EVENTS",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "SET_VOICE_CHANNEL_STATUS",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 1
+    },
+    {
+      "id": "1447302531444375696",
+      "name": "BIG OWNER🖐🏻",
+      "color": "#00f9ff",
+      "hoist": false,
+      "position": 82,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "VIEW_AUDIT_LOG",
+        "PRIORITY_SPEAKER",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "SEND_MESSAGES",
+        "EMBED_LINKS",
+        "ATTACH_FILES",
+        "READ_MESSAGE_HISTORY",
+        "MENTION_EVERYONE",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "MUTE_MEMBERS",
+        "MOVE_MEMBERS",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "USE_APPLICATION_COMMANDS",
+        "REQUEST_TO_SPEAK",
+        "USE_PUBLIC_THREADS",
+        "CREATE_PUBLIC_THREADS",
+        "USE_PRIVATE_THREADS",
+        "CREATE_PRIVATE_THREADS",
+        "USE_EXTERNAL_STICKERS",
+        "SEND_MESSAGES_IN_THREADS",
+        "START_EMBEDDED_ACTIVITIES",
+        "MODERATE_MEMBERS",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302532681699490",
+      "name": "الكنق👑",
+      "color": "#000000",
+      "hoist": false,
+      "position": 81,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302533801578597",
+      "name": "عوال التقنيت",
+      "color": "#000000",
+      "hoist": true,
+      "position": 80,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302535198146711",
+      "name": "Color-14",
+      "color": "#dc2626",
+      "hoist": false,
+      "position": 79,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302536129155183",
+      "name": "Color-3",
+      "color": "#d85ba8",
+      "hoist": false,
+      "position": 78,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302537169342464",
+      "name": "color-1260694759706726563",
+      "color": "#6b7280",
+      "hoist": false,
+      "position": 77,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302538356592771",
+      "name": "🎨 اللون 16",
+      "color": "#ff1493",
+      "hoist": false,
+      "position": 76,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302540084383916",
+      "name": "🎨 اللون 1",
+      "color": "#9b4d96",
+      "hoist": false,
+      "position": 75,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302541082628169",
+      "name": "21",
+      "color": "#d1d5db",
+      "hoist": false,
+      "position": 74,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302542370537492",
+      "name": "19",
+      "color": "#60a5fa",
+      "hoist": false,
+      "position": 73,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302543561593012",
+      "name": "18",
+      "color": "#7c3aed",
+      "hoist": false,
+      "position": 72,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302544807432262",
+      "name": "22",
+      "color": "#ffffff",
+      "hoist": false,
+      "position": 71,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302545860067532",
+      "name": "16",
+      "color": "#6b21a8",
+      "hoist": false,
+      "position": 70,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302546891739156",
+      "name": "15",
+      "color": "#a16207",
+      "hoist": false,
+      "position": 69,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302548007555142",
+      "name": "14",
+      "color": "#8b5a3c",
+      "hoist": false,
+      "position": 68,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302549366509588",
+      "name": "13",
+      "color": "#ef4444",
+      "hoist": false,
+      "position": 67,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302551019196506",
+      "name": "12",
+      "color": "#fb923c",
+      "hoist": false,
+      "position": 66,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302552080089289",
+      "name": "11",
+      "color": "#fed7aa",
+      "hoist": false,
+      "position": 65,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302553128796193",
+      "name": "10",
+      "color": "#eab308",
+      "hoist": false,
+      "position": 64,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302562352074792",
+      "name": "9",
+      "color": "#facc15",
+      "hoist": false,
+      "position": 63,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302563715088586",
+      "name": "8",
+      "color": "#84cc16",
+      "hoist": false,
+      "position": 62,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302564994355271",
+      "name": "7",
+      "color": "#22c55e",
+      "hoist": false,
+      "position": 61,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302565942267976",
+      "name": "6",
+      "color": "#4da6ff",
+      "hoist": false,
+      "position": 60,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302566890176632",
+      "name": "5",
+      "color": "#7dd3fc",
+      "hoist": false,
+      "position": 59,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302567989350430",
+      "name": "4",
+      "color": "#6b7280",
+      "hoist": false,
+      "position": 58,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302568865697864",
+      "name": "2",
+      "color": "#a578dc",
+      "hoist": false,
+      "position": 57,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302570878959646",
+      "name": "17",
+      "color": "#d8b4fe",
+      "hoist": false,
+      "position": 56,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302571860689016",
+      "name": "1",
+      "color": "#050607",
+      "hoist": false,
+      "position": 55,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302572837965924",
+      "name": "3",
+      "color": "#dd5e89",
+      "hoist": false,
+      "position": 54,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302573915901983",
+      "name": "20",
+      "color": "#3b82f6",
+      "hoist": false,
+      "position": 53,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302574934986914",
+      "name": "رمادي غامق",
+      "color": "#34495e",
+      "hoist": false,
+      "position": 52,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302575945678900",
+      "name": "تركواز",
+      "color": "#1abc9c",
+      "hoist": false,
+      "position": 51,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302577065558208",
+      "name": "nevo.",
+      "color": "#000000",
+      "hoist": true,
+      "position": 50,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302578256875601",
+      "name": "Fortnite",
+      "color": "#000000",
+      "hoist": false,
+      "position": 49,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302579204915383",
+      "name": "Overwatch",
+      "color": "#000000",
+      "hoist": false,
+      "position": 48,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302580807008296",
+      "name": "cod",
+      "color": "#000000",
+      "hoist": false,
+      "position": 47,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302581826355220",
+      "name": "valorant",
+      "color": "#000000",
+      "hoist": false,
+      "position": 46,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302583000633526",
+      "name": "roblox",
+      "color": "#000000",
+      "hoist": false,
+      "position": 45,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302584007397520",
+      "name": "Turki",
+      "color": "#000000",
+      "hoist": false,
+      "position": 44,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302585349308606",
+      "name": "lona",
+      "color": "#000000",
+      "hoist": false,
+      "position": 43,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302586456608979",
+      "name": "back",
+      "color": "#000000",
+      "hoist": false,
+      "position": 42,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302587874410526",
+      "name": "محبوب السيرفر",
+      "color": "#000000",
+      "hoist": true,
+      "position": 41,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302588906340443",
+      "name": "Phantoms",
+      "color": "#000000",
+      "hoist": true,
+      "position": 40,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302589875097610",
+      "name": "=ن",
+      "color": "#000000",
+      "hoist": false,
+      "position": 39,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302591007690854",
+      "name": "مقفل مخه",
+      "color": "#000000",
+      "hoist": true,
+      "position": 38,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302592014057553",
+      "name": "اونر 80%",
+      "color": "#000000",
+      "hoist": true,
+      "position": 37,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302592953581680",
+      "name": "عين الشر",
+      "color": "#000000",
+      "hoist": true,
+      "position": 36,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302593947762788",
+      "name": "وجه الفزعات",
+      "color": "#000000",
+      "hoist": true,
+      "position": 35,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302594946138254",
+      "name": "قاطع رزق",
+      "color": "#000000",
+      "hoist": true,
+      "position": 34,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302596090921022",
+      "name": "Clown",
+      "color": "#000000",
+      "hoist": true,
+      "position": 33,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302597215129650",
+      "name": "الزواحف",
+      "color": "#000000",
+      "hoist": true,
+      "position": 32,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302598473547836",
+      "name": "العفاريت",
+      "color": "#000000",
+      "hoist": true,
+      "position": 31,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302599836434574",
+      "name": "Demons",
+      "color": "#000000",
+      "hoist": true,
+      "position": 30,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302600931283127",
+      "name": "Wolves",
+      "color": "#000000",
+      "hoist": true,
+      "position": 29,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302602143563878",
+      "name": "زاحف",
+      "color": "#000000",
+      "hoist": true,
+      "position": 28,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302603254923406",
+      "name": "angels",
+      "color": "#000000",
+      "hoist": true,
+      "position": 27,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302604387258520",
+      "name": "friends",
+      "color": "#000000",
+      "hoist": true,
+      "position": 26,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302605553270825",
+      "name": "vampires",
+      "color": "#99aab5",
+      "hoist": true,
+      "position": 25,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302608770564268",
+      "name": "Pic",
+      "color": "#000000",
+      "hoist": false,
+      "position": 24,
+      "permissions": [
+        "ATTACH_FILES"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302610309742694",
+      "name": "بقشو",
+      "color": "#020201",
+      "hoist": false,
+      "position": 23,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302611299598366",
+      "name": "سابري",
+      "color": "#ffc0f8",
+      "hoist": false,
+      "position": 22,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302612520272104",
+      "name": "overseer",
+      "color": "#000000",
+      "hoist": true,
+      "position": 21,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "SEND_MESSAGES",
+        "ATTACH_FILES",
+        "CONNECT",
+        "SPEAK",
+        "MUTE_MEMBERS",
+        "CHANGE_NICKNAME",
+        "MANAGE_NICKNAMES",
+        "MANAGE_ROLES",
+        "USE_PUBLIC_THREADS",
+        "CREATE_PUBLIC_THREADS",
+        "SEND_MESSAGES_IN_THREADS",
+        "MODERATE_MEMBERS",
+        "SEND_POLLS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302613975699650",
+      "name": "trail",
+      "color": "#000000",
+      "hoist": true,
+      "position": 20,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302614797516962",
+      "name": "Observer",
+      "color": "#000000",
+      "hoist": true,
+      "position": 19,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "SEND_MESSAGES",
+        "ATTACH_FILES",
+        "CONNECT",
+        "SPEAK",
+        "MUTE_MEMBERS",
+        "MOVE_MEMBERS",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "MANAGE_NICKNAMES",
+        "MANAGE_ROLES",
+        "USE_PUBLIC_THREADS",
+        "CREATE_PUBLIC_THREADS",
+        "USE_PRIVATE_THREADS",
+        "CREATE_PRIVATE_THREADS",
+        "SEND_MESSAGES_IN_THREADS",
+        "MODERATE_MEMBERS",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_POLLS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302616374837248",
+      "name": "manager",
+      "color": "#000000",
+      "hoist": true,
+      "position": 18,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "SEND_MESSAGES",
+        "MANAGE_MESSAGES",
+        "ATTACH_FILES",
+        "CONNECT",
+        "SPEAK",
+        "MUTE_MEMBERS",
+        "MOVE_MEMBERS",
+        "CHANGE_NICKNAME",
+        "MANAGE_NICKNAMES",
+        "USE_PUBLIC_THREADS",
+        "CREATE_PUBLIC_THREADS",
+        "USE_PRIVATE_THREADS",
+        "CREATE_PRIVATE_THREADS",
+        "SEND_MESSAGES_IN_THREADS",
+        "MODERATE_MEMBERS",
+        "SEND_POLLS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302617389731880",
+      "name": "Monitor",
+      "color": "#000000",
+      "hoist": false,
+      "position": 17,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302618383646730",
+      "name": "Coordinator",
+      "color": "#000000",
+      "hoist": false,
+      "position": 16,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "SEND_MESSAGES",
+        "EMBED_LINKS",
+        "ATTACH_FILES",
+        "MENTION_EVERYONE",
+        "CONNECT",
+        "SPEAK",
+        "CHANGE_NICKNAME",
+        "MANAGE_NICKNAMES",
+        "MANAGE_ROLES",
+        "USE_PUBLIC_THREADS",
+        "CREATE_PUBLIC_THREADS",
+        "USE_PRIVATE_THREADS",
+        "CREATE_PRIVATE_THREADS",
+        "SEND_MESSAGES_IN_THREADS",
+        "MODERATE_MEMBERS",
+        "SEND_POLLS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302618958401677",
+      "name": "Supervisor",
+      "color": "#000000",
+      "hoist": false,
+      "position": 15,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "SEND_MESSAGES",
+        "EMBED_LINKS",
+        "ATTACH_FILES",
+        "MENTION_EVERYONE",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "CHANGE_NICKNAME",
+        "MANAGE_NICKNAMES",
+        "MANAGE_ROLES",
+        "USE_PUBLIC_THREADS",
+        "CREATE_PUBLIC_THREADS",
+        "USE_PRIVATE_THREADS",
+        "CREATE_PRIVATE_THREADS",
+        "USE_EXTERNAL_STICKERS",
+        "SEND_MESSAGES_IN_THREADS",
+        "MODERATE_MEMBERS",
+        "SEND_POLLS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302620313161819",
+      "name": "Controller",
+      "color": "#000000",
+      "hoist": false,
+      "position": 14,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "SEND_MESSAGES",
+        "MANAGE_MESSAGES",
+        "EMBED_LINKS",
+        "ATTACH_FILES",
+        "MENTION_EVERYONE",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "CHANGE_NICKNAME",
+        "MANAGE_NICKNAMES",
+        "MANAGE_ROLES",
+        "USE_PUBLIC_THREADS",
+        "CREATE_PUBLIC_THREADS",
+        "USE_PRIVATE_THREADS",
+        "CREATE_PRIVATE_THREADS",
+        "USE_EXTERNAL_STICKERS",
+        "SEND_MESSAGES_IN_THREADS",
+        "MODERATE_MEMBERS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302621684826213",
+      "name": "Oversight",
+      "color": "#000000",
+      "hoist": false,
+      "position": 13,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "SEND_MESSAGES",
+        "MANAGE_MESSAGES",
+        "EMBED_LINKS",
+        "ATTACH_FILES",
+        "MENTION_EVERYONE",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "CHANGE_NICKNAME",
+        "MANAGE_NICKNAMES",
+        "MANAGE_ROLES",
+        "USE_PUBLIC_THREADS",
+        "CREATE_PUBLIC_THREADS",
+        "USE_PRIVATE_THREADS",
+        "CREATE_PRIVATE_THREADS",
+        "USE_EXTERNAL_STICKERS",
+        "SEND_MESSAGES_IN_THREADS",
+        "MODERATE_MEMBERS",
+        "USE_SOUNDBOARD"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302623286792242",
+      "name": "owner",
+      "color": "#000000",
+      "hoist": false,
+      "position": 12,
+      "permissions": [
+        "MODERATE_MEMBERS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302624578638094",
+      "name": "Lead",
+      "color": "#000000",
+      "hoist": false,
+      "position": 11,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "SEND_MESSAGES",
+        "MANAGE_MESSAGES",
+        "EMBED_LINKS",
+        "ATTACH_FILES",
+        "MENTION_EVERYONE",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "CHANGE_NICKNAME",
+        "MANAGE_NICKNAMES",
+        "MANAGE_ROLES",
+        "USE_PUBLIC_THREADS",
+        "CREATE_PUBLIC_THREADS",
+        "USE_PRIVATE_THREADS",
+        "CREATE_PRIVATE_THREADS",
+        "USE_EXTERNAL_STICKERS",
+        "SEND_MESSAGES_IN_THREADS",
+        "MODERATE_MEMBERS",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302625618952333",
+      "name": "Senior",
+      "color": "#000000",
+      "hoist": false,
+      "position": 10,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "SEND_MESSAGES",
+        "MANAGE_MESSAGES",
+        "EMBED_LINKS",
+        "ATTACH_FILES",
+        "MENTION_EVERYONE",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "MUTE_MEMBERS",
+        "DEAFEN_MEMBERS",
+        "MOVE_MEMBERS",
+        "CHANGE_NICKNAME",
+        "MANAGE_NICKNAMES",
+        "MANAGE_ROLES",
+        "USE_PUBLIC_THREADS",
+        "CREATE_PUBLIC_THREADS",
+        "USE_PRIVATE_THREADS",
+        "CREATE_PRIVATE_THREADS",
+        "USE_EXTERNAL_STICKERS",
+        "SEND_MESSAGES_IN_THREADS",
+        "MODERATE_MEMBERS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302627279896767",
+      "name": "Operations Director",
+      "color": "#000000",
+      "hoist": true,
+      "position": 9,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "VIEW_AUDIT_LOG",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "SEND_MESSAGES",
+        "MANAGE_MESSAGES",
+        "ATTACH_FILES",
+        "MENTION_EVERYONE",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "MUTE_MEMBERS",
+        "CHANGE_NICKNAME",
+        "MANAGE_NICKNAMES",
+        "MANAGE_ROLES",
+        "USE_PUBLIC_THREADS",
+        "CREATE_PUBLIC_THREADS",
+        "USE_PRIVATE_THREADS",
+        "CREATE_PRIVATE_THREADS",
+        "USE_EXTERNAL_STICKERS",
+        "SEND_MESSAGES_IN_THREADS",
+        "MODERATE_MEMBERS",
+        "SEND_VOICE_MESSAGES",
+        "SEND_POLLS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302628395585646",
+      "name": "Imperium",
+      "color": "#000000",
+      "hoist": true,
+      "position": 8,
+      "permissions": [],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302629578506482",
+      "name": "Executive",
+      "color": "#f1c40f",
+      "hoist": true,
+      "position": 7,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "VIEW_AUDIT_LOG",
+        "PRIORITY_SPEAKER",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "SEND_MESSAGES",
+        "EMBED_LINKS",
+        "ATTACH_FILES",
+        "MENTION_EVERYONE",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "MUTE_MEMBERS",
+        "MOVE_MEMBERS",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "USE_APPLICATION_COMMANDS",
+        "USE_PUBLIC_THREADS",
+        "CREATE_PUBLIC_THREADS",
+        "USE_PRIVATE_THREADS",
+        "CREATE_PRIVATE_THREADS",
+        "SEND_MESSAGES_IN_THREADS",
+        "MODERATE_MEMBERS",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "SEND_POLLS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302630714900500",
+      "name": "server manage",
+      "color": "#000000",
+      "hoist": false,
+      "position": 6,
+      "permissions": [
+        "MANAGE_CHANNELS",
+        "MANAGE_GUILD",
+        "VIEW_CHANNEL"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302631847624825",
+      "name": "RevoBoter",
+      "color": "#050505",
+      "hoist": false,
+      "position": 5,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "KICK_MEMBERS",
+        "BAN_MEMBERS",
+        "ADMINISTRATOR",
+        "MANAGE_CHANNELS",
+        "MANAGE_GUILD",
+        "ADD_REACTIONS",
+        "VIEW_AUDIT_LOG",
+        "PRIORITY_SPEAKER",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "SEND_MESSAGES",
+        "SEND_TTS_MESSAGES",
+        "MANAGE_MESSAGES",
+        "EMBED_LINKS",
+        "ATTACH_FILES",
+        "READ_MESSAGE_HISTORY",
+        "MENTION_EVERYONE",
+        "USE_EXTERNAL_EMOJIS",
+        "VIEW_GUILD_INSIGHTS",
+        "CONNECT",
+        "SPEAK",
+        "MUTE_MEMBERS",
+        "DEAFEN_MEMBERS",
+        "MOVE_MEMBERS",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "MANAGE_NICKNAMES",
+        "MANAGE_ROLES",
+        "MANAGE_WEBHOOKS",
+        "MANAGE_EMOJIS_AND_STICKERS",
+        "USE_APPLICATION_COMMANDS",
+        "REQUEST_TO_SPEAK",
+        "MANAGE_EVENTS",
+        "MANAGE_THREADS",
+        "USE_PUBLIC_THREADS",
+        "CREATE_PUBLIC_THREADS",
+        "USE_PRIVATE_THREADS",
+        "CREATE_PRIVATE_THREADS",
+        "USE_EXTERNAL_STICKERS",
+        "SEND_MESSAGES_IN_THREADS",
+        "START_EMBEDDED_ACTIVITIES",
+        "MODERATE_MEMBERS",
+        "USE_SOUNDBOARD",
+        "CREATE_GUILD_EXPRESSIONS",
+        "CREATE_EVENTS",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "SET_VOICE_CHANNEL_STATUS",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302633160442067",
+      "name": "-",
+      "color": "#000000",
+      "hoist": false,
+      "position": 4,
+      "permissions": [
+        "ADMINISTRATOR"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302634959540234",
+      "name": "right hand 2",
+      "color": "#000000",
+      "hoist": false,
+      "position": 3,
+      "permissions": [
+        "ADMINISTRATOR"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302640449880186",
+      "name": "right hand",
+      "color": "#000000",
+      "hoist": false,
+      "position": 2,
+      "permissions": [
+        "ADMINISTRATOR"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447302642056433744",
+      "name": "sec",
+      "color": "#000000",
+      "hoist": false,
+      "position": 1,
+      "permissions": [
+        "ADMINISTRATOR"
+      ],
+      "memberCount": 0
+    },
+    {
+      "id": "1447029144285347913",
+      "name": "@everyone",
+      "color": "#000000",
+      "hoist": false,
+      "position": 0,
+      "permissions": [
+        "CREATE_INSTANT_INVITE",
+        "ADD_REACTIONS",
+        "STREAM",
+        "VIEW_CHANNEL",
+        "READ_MESSAGE_HISTORY",
+        "USE_EXTERNAL_EMOJIS",
+        "CONNECT",
+        "SPEAK",
+        "USE_VAD",
+        "CHANGE_NICKNAME",
+        "REQUEST_TO_SPEAK",
+        "USE_EXTERNAL_STICKERS",
+        "START_EMBEDDED_ACTIVITIES",
+        "USE_SOUNDBOARD",
+        "USE_EXTERNAL_SOUNDS",
+        "SEND_VOICE_MESSAGES",
+        "USE_CLYDE_AI",
+        "SEND_POLLS",
+        "USE_EXTERNAL_APPS"
+      ],
+      "memberCount": 3
+    }
+  ],
+  "channels": [
+    {
+      "id": "1447302718690557962",
+      "name": "tickets",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302648729571539",
+      "position": 0
+    },
+    {
+      "id": "1447302673874288833",
+      "name": "d3m",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302651741077756",
+      "position": 0
+    },
+    {
+      "id": "1447302721966178445",
+      "name": "chatting",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302644606439566",
+      "position": 0
+    },
+    {
+      "id": "1447302676348932270",
+      "name": "edited",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302662763577464",
+      "position": 0
+    },
+    {
+      "id": "1447302674943836346",
+      "name": "staff-rules",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302660125626449",
+      "position": 0
+    },
+    {
+      "id": "1447302693969330247",
+      "name": "Create Your Room.",
+      "type": "GUILD_VOICE",
+      "topic": null,
+      "parentId": "1447302653972582603",
+      "position": 0
+    },
+    {
+      "id": "1447302682976190525",
+      "name": "fortnite",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302645852278966",
+      "position": 0
+    },
+    {
+      "id": "1447302672565796925",
+      "name": "control",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302653972582603",
+      "position": 0
+    },
+    {
+      "id": "1447302691213541386",
+      "name": "join",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302661199233095",
+      "position": 0
+    },
+    {
+      "id": "1447302702005621016",
+      "name": "let down",
+      "type": "GUILD_VOICE",
+      "topic": null,
+      "parentId": "1447302652894380115",
+      "position": 0
+    },
+    {
+      "id": "1447302692669100155",
+      "name": "boost",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302646951313479",
+      "position": 0
+    },
+    {
+      "id": "1447302720322011277",
+      "name": "mod-only",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": null,
+      "position": 0
+    },
+    {
+      "id": "1447302644606439566",
+      "name": "Share your story",
+      "type": "GUILD_CATEGORY",
+      "topic": null,
+      "parentId": null,
+      "position": 0
+    },
+    {
+      "id": "1447302700378230877",
+      "name": "wannabeyours",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302652894380115",
+      "position": 0
+    },
+    {
+      "id": "1447302723086192662",
+      "name": "staff-news",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302660125626449",
+      "position": 1
+    },
+    {
+      "id": "1447302725749702960",
+      "name": "roblox",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302645852278966",
+      "position": 1
+    },
+    {
+      "id": "1447302733655838760",
+      "name": "locket",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302644606439566",
+      "position": 1
+    },
+    {
+      "id": "1447302727033032864",
+      "name": "leave",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302661199233095",
+      "position": 1
+    },
+    {
+      "id": "1447302724348547133",
+      "name": "cavar",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": null,
+      "position": 1
+    },
+    {
+      "id": "1447302735052406784",
+      "name": "جبر",
+      "type": "GUILD_VOICE",
+      "topic": null,
+      "parentId": "1447302653972582603",
+      "position": 1
+    },
+    {
+      "id": "1447302737485369447",
+      "name": "deleted",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302662763577464",
+      "position": 1
+    },
+    {
+      "id": "1447302739674792187",
+      "name": "fantasy",
+      "type": "GUILD_VOICE",
+      "topic": null,
+      "parentId": "1447302652894380115",
+      "position": 1
+    },
+    {
+      "id": "1447302645852278966",
+      "name": "teaming",
+      "type": "GUILD_CATEGORY",
+      "topic": null,
+      "parentId": null,
+      "position": 1
+    },
+    {
+      "id": "1447302745857065133",
+      "name": "feeling",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302644606439566",
+      "position": 2
+    },
+    {
+      "id": "1447302646951313479",
+      "name": "boosts",
+      "type": "GUILD_CATEGORY",
+      "topic": null,
+      "parentId": null,
+      "position": 2
+    },
+    {
+      "id": "1447302761908801677",
+      "name": "cod",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302645852278966",
+      "position": 2
+    },
+    {
+      "id": "1447302754031632514",
+      "name": "timeout",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302662763577464",
+      "position": 2
+    },
+    {
+      "id": "1447302759886880972",
+      "name": "staff-chat",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302660125626449",
+      "position": 2
+    },
+    {
+      "id": "1447302755117961448",
+      "name": "news",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": null,
+      "position": 2
+    },
+    {
+      "id": "1447302747048382597",
+      "name": "darkness",
+      "type": "GUILD_VOICE",
+      "topic": null,
+      "parentId": "1447302652894380115",
+      "position": 2
+    },
+    {
+      "id": "1447302777691701258",
+      "name": "link",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": null,
+      "position": 3
+    },
+    {
+      "id": "1447302778790871103",
+      "name": "overwatch",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302645852278966",
+      "position": 3
+    },
+    {
+      "id": "1447302769462738985",
+      "name": "staff-commands",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302660125626449",
+      "position": 3
+    },
+    {
+      "id": "1447302768304853164",
+      "name": "no surprises",
+      "type": "GUILD_VOICE",
+      "topic": null,
+      "parentId": "1447302652894380115",
+      "position": 3
+    },
+    {
+      "id": "1447302771278872768",
+      "name": "voice",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302662763577464",
+      "position": 3
+    },
+    {
+      "id": "1447302648729571539",
+      "name": "tickets",
+      "type": "GUILD_CATEGORY",
+      "topic": null,
+      "parentId": null,
+      "position": 3
+    },
+    {
+      "id": "1447302785736507592",
+      "name": "commands",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302644606439566",
+      "position": 3
+    },
+    {
+      "id": "1447302788080992388",
+      "name": "quark-logs",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302662763577464",
+      "position": 4
+    },
+    {
+      "id": "1447302786944598176",
+      "name": "valorant",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302645852278966",
+      "position": 4
+    },
+    {
+      "id": "1447302650529054850",
+      "name": "REVO HELP",
+      "type": "GUILD_CATEGORY",
+      "topic": null,
+      "parentId": null,
+      "position": 4
+    },
+    {
+      "id": "1447302651741077756",
+      "name": "Support",
+      "type": "GUILD_CATEGORY",
+      "topic": null,
+      "parentId": null,
+      "position": 5
+    },
+    {
+      "id": "1447302794867507231",
+      "name": "roles",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302662763577464",
+      "position": 5
+    },
+    {
+      "id": "1447302652894380115",
+      "name": "Talk Around.",
+      "type": "GUILD_CATEGORY",
+      "topic": null,
+      "parentId": null,
+      "position": 6
+    },
+    {
+      "id": "1447302796381782138",
+      "name": "important-logs",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302662763577464",
+      "position": 6
+    },
+    {
+      "id": "1447302803377619075",
+      "name": "channel-created",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302662763577464",
+      "position": 7
+    },
+    {
+      "id": "1447302653972582603",
+      "name": "TEMPVOICE CATEGORY",
+      "type": "GUILD_CATEGORY",
+      "topic": null,
+      "parentId": null,
+      "position": 7
+    },
+    {
+      "id": "1447302804900417707",
+      "name": "pic-deleted",
+      "type": "GUILD_TEXT",
+      "topic": null,
+      "parentId": "1447302662763577464",
+      "position": 8
+    },
+    {
+      "id": "1447302660125626449",
+      "name": "staff",
+      "type": "GUILD_CATEGORY",
+      "topic": null,
+      "parentId": null,
+      "position": 8
+    },
+    {
+      "id": "1447302661199233095",
+      "name": "join&leave",
+      "type": "GUILD_CATEGORY",
+      "topic": null,
+      "parentId": null,
+      "position": 9
+    },
+    {
+      "id": "1447302662763577464",
+      "name": "logs",
+      "type": "GUILD_CATEGORY",
+      "topic": null,
+      "parentId": null,
+      "position": 10
+    }
+  ],
+  "emojis": [],
+  "bans": [],
+  "members": [
+    {
+      "id": "1200916662606647487",
+      "tag": "7uh9",
+      "nickname": null,
+      "avatarURL": "https://cdn.discordapp.com/avatars/1200916662606647487/303e20380620ed823926da8fd4b76480.webp?size=128",
+      "joinedAt": "Sun, 07 Dec 2025 00:57:26 GMT",
+      "roles": [
+        {
+          "id": "1447031450384732282",
+          "name": "blaze",
+          "color": "#ffcc00"
+        }
+      ]
+    },
+    {
+      "id": "1273679097498701876",
+      "tag": "_v5s",
+      "nickname": null,
+      "avatarURL": "https://cdn.discordapp.com/avatars/1273679097498701876/418f56b63a611bea667dea2b555c9617.webp?size=128",
+      "joinedAt": "Sun, 07 Dec 2025 18:32:16 GMT",
+      "roles": []
+    },
+    {
+      "id": "1441468585259040909",
+      "tag": "ahmed_2qw",
+      "nickname": null,
+      "avatarURL": "https://cdn.discordapp.com/avatars/1441468585259040909/769a85d724dacc84ba226a7af4fae298.webp?size=128",
+      "joinedAt": "Sun, 07 Dec 2025 00:57:12 GMT",
+      "roles": []
+    }
+  ]
+}`);
+
+
+        function renderHeader() {
+            const header = document.getElementById('header');
+            header.innerHTML = `
+            <img src="${serverData.iconURL}" alt="Server Icon">
+            <div class="header-info">
+                <h1>${serverData.name}</h1>
+                <p>${serverData.memberCount} Members | Owner: ${serverData.owner} | Created: ${new Date(serverData.createdAt).toLocaleDateString()}</p>
+            </div>
+        `;
+        }
+
+        function renderRoles() {
+            const table = document.getElementById('roles-table');
+            let html = '<tr><th>Name</th><th>Members</th><th>Color</th><th>Hoisted</th><th>Permissions</th></tr>';
+            serverData.roles.forEach(role => {
+                html += `
+                <tr data-searchable="${role.name.toLowerCase()}">
+                    <td><span class="role-color-dot" style="background-color:${role.color};"></span>${role.name}</td>
+                    <td>${role.memberCount}</td>
+                    <td>${role.color}</td>
+                    <td>${role.hoist ? 'Yes' : 'No'}</td>
+                    <td><small>${role.permissions.join(', ')}</small></td>
+                </tr>
+            `;
+            });
+            table.innerHTML = html;
+        }
+
+        function renderChannels() {
+            const table = document.getElementById('channels-table');
+            let html = '<tr><th>Name</th><th>Type</th><th>Category</th><th>Topic</th></tr>';
+            const categories = new Map(serverData.channels.filter(c => c.type === 'GUILD_CATEGORY').map(c => [c.id, c.name]));
+            serverData.channels.filter(c => c.type !== 'GUILD_CATEGORY').forEach(channel => {
+                html += `
+                <tr data-searchable="${channel.name.toLowerCase()}">
+                    <td class="channel-type ${channel.type}">${channel.name}</td>
+                    <td>${channel.type.replace('GUILD_', '').toLowerCase()}</td>
+                    <td>${channel.parentId ? categories.get(channel.parentId) || 'None' : 'None'}</td>
+                    <td>${channel.topic || ''}</td>
+                </tr>
+            `;
+            });
+            table.innerHTML = html;
+        }
+
+        function renderEmojis() {
+            const table = document.getElementById('emojis-table');
+            if (serverData.emojis.length === 0) {
+                table.innerHTML = "<tr><td>No custom emojis found in this server.</td></tr>";
+                return;
+            }
+            let html = '<tr><th>Preview</th><th>Name</th><th>Animated</th><th>URL</th></tr>';
+            serverData.emojis.forEach(emoji => {
+                html += `
+                <tr data-searchable="${emoji.name.toLowerCase()}">
+                    <td><img class="emoji-img" src="${emoji.url}" alt="${emoji.name}"></td>
+                    <td>:${emoji.name}:</td>
+                    <td>${emoji.animated ? 'Yes' : 'No'}</td>
+                    <td><a href="${emoji.url}" target="_blank">Link</a></td>
+                </tr>
+            `;
+            });
+            table.innerHTML = html;
+        }
+
+        function renderBans() {
+            const table = document.getElementById('bans-table');
+            if (serverData.bans.length === 0) {
+                table.innerHTML = "<tr><td>No banned users found or permissions were missing to view them.</td></tr>";
+                return;
+            }
+            let html = '<tr><th>User Tag</th><th>User ID</th><th>Reason</th></tr>';
+            serverData.bans.forEach(ban => {
+                html += `
+                <tr data-searchable="${ban.tag.toLowerCase()} ${ban.id}">
+                    <td>${ban.tag}</td>
+                    <td>${ban.id}</td>
+                    <td>${ban.reason || 'No reason provided'}</td>
+                </tr>
+            `;
+            });
+            table.innerHTML = html;
+        }
+
+        function renderMembers() {
+            const header = document.getElementById('members-header');
+            header.textContent = `Members (${serverData.members.length})`;
+            const list = document.getElementById('member-list');
+            let html = '';
+            serverData.members.forEach(member => {
+                const rolesHtml = member.roles.map(role =>
+                    `<span class="role-color-dot" style="background-color:${role.color};" title="${role.name}"></span>`
+                ).join('');
+
+                html += `
+                <div class="member-card" data-searchable="${member.tag.toLowerCase()} ${member.nickname ? member.nickname.toLowerCase() : ''}">
+                    <img src="${member.avatarURL}" alt="${member.tag}" class="member-avatar">
+                    <div class="member-info">
+                        <h3>${member.nickname ? `${member.nickname} (${member.tag})` : member.tag}</h3>
+                        <div class="member-roles">
+                            ${rolesHtml}
+                        </div>
+                        <div class="member-meta">
+                            Joined: ${new Date(member.joinedAt).toLocaleDateString()}
+                        </div>
+                    </div>
+                </div>
+                `;
+            });
+            list.innerHTML = html;
+        }
+
+
+        function openTab(tabName, element) {
+            let i, tabcontent, tabbuttons;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tabbuttons = document.getElementsByClassName("tab-button");
+            for (i = 0; i < tabbuttons.length; i++) {
+                tabbuttons[i].className = tabbuttons[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            // If called from an onclick event, 'element' will be the button.
+            if (element) {
+                element.className += " active";
+            } else { // If called on load, find the button by its onclick attribute.
+                document.querySelector(`.tab-button[onclick="openTab('${tabName}', this)"]`).className += " active";
+            }
+            document.getElementById('searchInput').value = '';
+            search(); // Clear search on tab switch
+        }
+
+        function search() {
+            const input = document.getElementById('searchInput');
+            const filter = input.value.toLowerCase();
+            const activeTab = document.querySelector('.tab-content.active');
+            if (!activeTab) return;
+
+            // Handle both tables and member cards
+            const rows = activeTab.querySelectorAll('[data-searchable]');
+            if (rows.length === 0) return;
+
+            rows.forEach(row => {
+                const text = row.getAttribute('data-searchable');
+
+                if (text.includes(filter)) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // The data is already parsed, just rename it for the render functions
+            // This is a fallback in case any function still uses `data`
+            window.data = serverData;
+
+            renderHeader(); // This will now use the correct `data` object
+            renderRoles();
+            renderChannels();
+            renderEmojis();
+            renderBans();
+            renderMembers();
+            openTab('roles'); // Initialize the first tab without an event
+        });
+
+    </script>
+</body>
+
+</html>

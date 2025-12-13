@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Export</title>
+    <style>
+        :root {
+            --background-primary: #36393f;
+            --background-secondary: #2f3136;
+            --background-tertiary: #202225;
+            --header-primary: #ffffff;
+            --header-secondary: #b9bbbe;
+            --text-normal: #dcddde;
+            --text-muted: #72767d;
+            --brand-experiment: #5865f2;
+            --green: #43b581;
+            --yellow: #faa61a;
+            --red: #f04747;
+            --border-color: #40444b;
+            --member-role-gap: 4px;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: var(--background-secondary);
+            color: var(--text-normal);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            background-color: var(--background-tertiary);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .header img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin-right: 20px;
+        }
+
+        .header-info h1 {
+            margin: 0;
+            color: var(--header-primary);
+        }
+
+        .header-info p {
+            margin: 5px 0 0;
+            color: var(--header-secondary);
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--background-tertiary);
+        }
+
+        .tab-button {
+            padding: 10px 20px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            color: var(--header-secondary);
+            font-size: 16px;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab-button.active {
+            color: var(--header-primary);
+            border-bottom: 2px solid var(--brand-experiment);
+        }
+
+        .tab-content {
+            display: none;
+            background-color: var(--background-tertiary);
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--background-secondary);
+            color: var(--text-normal);
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: var(--background-primary);
+            color: var(--header-secondary);
+        }
+
+        .role-color-dot {
+            height: 15px;
+            width: 15px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .channel-type::before {
+            content: '# ';
+            color: var(--text-muted);
+        }
+
+        .channel-type.GUILD_VOICE::before {
+            content: '🔊 ';
+        }
+
+        .channel-type.GUILD_CATEGORY::before {
+            content: '📁 ';
+        }
+
+        .emoji-img {
+            width: 24px;
+            height: 24px;
+            vertical-align: middle;
+        }
+
+        .member-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .member-card {
+            display: flex;
+            align-items: center;
+            background-color: var(--background-secondary);
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid var(--border-color);
+        }
+
+        .member-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 15px;
+        }
+
+        .member-info h3 {
+            margin: 0;
+            font-size: 16px;
+        }
+
+        .member-roles {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--member-role-gap);
+            margin-top: 5px;
+        }
+
+        .member-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div id="header" class="header"></div>
+        <div class="tabs">
+            <button class="tab-button active" onclick="openTab('roles', this)">Roles</button>
+            <button class="tab-button" onclick="openTab('channels', this)">Channels</button>
+            <button class="tab-button" onclick="openTab('emojis', this)">Emojis</button>
+            <button class="tab-button" onclick="openTab('bans', this)">Bans</button>
+            <button class="tab-button" onclick="openTab('members', this)">Members</button>
+        </div>
+        <input type="text" id="searchInput" onkeyup="search()" placeholder="Search...">
+        <div id="roles" class="tab-content active">
+            <h2>Roles</h2>
+            <table id="roles-table"></table>
+        </div>
+        <div id="channels" class="tab-content">
+            <h2>Channels</h2>
+            <table id="channels-table"></table>
+        </div>
+        <div id="emojis" class="tab-content">
+            <h2>Emojis</h2>
+            <table id="emojis-table"></table>
+        </div>
+        <div id="bans" class="tab-content">
+            <h2>Banned Users</h2>
+            <table id="bans-table"></table>
+        </div>
+        <div id="members" class="tab-content">
+            <h2 id="members-header">Members</h2>
+            <div id="member-list" class="member-list"></div>
+        </div>
+    </div>
+    <script>
+        const serverData = JSON.parse(`{{DATA_PLACEHOLDER}}`);
+        function renderHeader() {
+            const header = document.getElementById('header');
+            header.innerHTML = `
+            <img src="${serverData.iconURL}" alt="Server Icon">
+            <div class="header-info">
+                <h1>${serverData.name}</h1>
+                <p>${serverData.memberCount} Members | Owner: ${serverData.owner} | Created: ${new Date(serverData.createdAt).toLocaleDateString()}</p>
+            </div>
+        `;
+        }
+        function renderRoles() {
+            const table = document.getElementById('roles-table');
+            let html = '<tr><th>Name</th><th>Members</th><th>Color</th><th>Hoisted</th><th>Permissions</th></tr>';
+            serverData.roles.forEach(role => {
+                html += `
+                <tr data-searchable="${role.name.toLowerCase()}">
+                    <td><span class="role-color-dot" style="background-color:${role.color};"></span>${role.name}</td>
+                    <td>${role.memberCount}</td>
+                    <td>${role.color}</td>
+                    <td>${role.hoist ? 'Yes' : 'No'}</td>
+                    <td><small>${role.permissions.join(', ')}</small></td>
+                </tr>
+            `;
+            });
+            table.innerHTML = html;
+        }
+        function renderChannels() {
+            const table = document.getElementById('channels-table');
+            let html = '<tr><th>Name</th><th>Type</th><th>Category</th><th>Topic</th></tr>';
+            const categories = new Map(serverData.channels.filter(c => c.type === 'GUILD_CATEGORY').map(c => [c.id, c.name]));
+            serverData.channels.filter(c => c.type !== 'GUILD_CATEGORY').forEach(channel => {
+                html += `
+                <tr data-searchable="${channel.name.toLowerCase()}">
+                    <td class="channel-type ${channel.type}">${channel.name}</td>
+                    <td>${channel.type.replace('GUILD_', '').toLowerCase()}</td>
+                    <td>${channel.parentId ? categories.get(channel.parentId) || 'None' : 'None'}</td>
+                    <td>${channel.topic || ''}</td>
+                </tr>
+            `;
+            });
+            table.innerHTML = html;
+        }
+        function renderEmojis() {
+            const table = document.getElementById('emojis-table');
+            if (serverData.emojis.length === 0) {
+                table.innerHTML = "<tr><td>No custom emojis found in this server.</td></tr>";
+                return;
+            }
+            let html = '<tr><th>Preview</th><th>Name</th><th>Animated</th><th>URL</th></tr>';
+            serverData.emojis.forEach(emoji => {
+                html += `
+                <tr data-searchable="${emoji.name.toLowerCase()}">
+                    <td><img class="emoji-img" src="${emoji.url}" alt="${emoji.name}"></td>
+                    <td>:${emoji.name}:</td>
+                    <td>${emoji.animated ? 'Yes' : 'No'}</td>
+                    <td><a href="${emoji.url}" target="_blank">Link</a></td>
+                </tr>
+            `;
+            });
+            table.innerHTML = html;
+        }
+        function renderBans() {
+            const table = document.getElementById('bans-table');
+            if (serverData.bans.length === 0) {
+                table.innerHTML = "<tr><td>No banned users found or permissions were missing to view them.</td></tr>";
+                return;
+            }
+            let html = '<tr><th>User Tag</th><th>User ID</th><th>Reason</th></tr>';
+            serverData.bans.forEach(ban => {
+                html += `
+                <tr data-searchable="${ban.tag.toLowerCase()} ${ban.id}">
+                    <td>${ban.tag}</td>
+                    <td>${ban.id}</td>
+                    <td>${ban.reason || 'No reason provided'}</td>
+                </tr>
+            `;
+            });
+            table.innerHTML = html;
+        }
+        function renderMembers() {
+            const header = document.getElementById('members-header');
+            header.textContent = `Members (${serverData.members.length})`;
+            const list = document.getElementById('member-list');
+            let html = '';
+            serverData.members.forEach(member => {
+                const rolesHtml = member.roles.map(role =>
+                    `<span class="role-color-dot" style="background-color:${role.color};" title="${role.name}"></span>`
+                ).join('');
+                html += `
+                <div class="member-card" data-searchable="${member.tag.toLowerCase()} ${member.nickname ? member.nickname.toLowerCase() : ''}">
+                    <img src="${member.avatarURL}" alt="${member.tag}" class="member-avatar">
+                    <div class="member-info">
+                        <h3>${member.nickname ? `${member.nickname} (${member.tag})` : member.tag}</h3>
+                        <div class="member-roles">
+                            ${rolesHtml}
+                        </div>
+                        <div class="member-meta">
+                            Joined: ${new Date(member.joinedAt).toLocaleDateString()}
+                        </div>
+                    </div>
+                </div>
+                `;
+            });
+            list.innerHTML = html;
+        }
+        function openTab(tabName, element) {
+            let i, tabcontent, tabbuttons;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tabbuttons = document.getElementsByClassName("tab-button");
+            for (i = 0; i < tabbuttons.length; i++) {
+                tabbuttons[i].className = tabbuttons[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            if (element) {
+                element.className += " active";
+            } else {
+                document.querySelector(`.tab-button[onclick="openTab('${tabName}', this)"]`).className += " active";
+            }
+            document.getElementById('searchInput').value = '';
+            search();
+        }
+        function search() {
+            const input = document.getElementById('searchInput');
+            const filter = input.value.toLowerCase();
+            const activeTab = document.querySelector('.tab-content.active');
+            if (!activeTab) return;
+            const rows = activeTab.querySelectorAll('[data-searchable]');
+            if (rows.length === 0) return;
+            rows.forEach(row => {
+                const text = row.getAttribute('data-searchable');
+                if (text.includes(filter)) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            window.data = serverData;
+            renderHeader();
+            renderRoles();
+            renderChannels();
+            renderEmojis();
+            renderBans();
+            renderMembers();
+            openTab('roles');
+        });
+    </script>
+</body>
+
+</html>
