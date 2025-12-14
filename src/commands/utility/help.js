@@ -1,81 +1,74 @@
 'use strict';
 
+const { MessageEmbed } = require('../../index.js');
 const path = require('path');
 
 module.exports = {
     name: 'help',
-    description: 'Displays a list of available commands, or info about a specific command.',
-    usage: '-help [command name]',
-    permission: 'admin', // All authorized users can use help
+    description: 'Displays a list of all available commands, or info about a specific command.',
+    usage: '-help [command_name]',
+    permission: 'owner',
 
     /**
      * Executes the help command.
-     * @param {Message} message The message object that triggered the command.
+     * @param {import('discord.js-selfbot-v13').Message} message The message object that triggered the command.
      * @param {string[]} args The arguments passed to the command.
-     * @param {Client} client The Discord client instance.
+     * @param {import('discord.js-selfbot-v13').Client} client The Discord client instance.
      */
     async execute(message, args, client) {
-        const commands = client.commands;
-        const { prefix } = client.permissions;
-        const isOwner = client.permissions.isOwner(message.author.id);
+        const { commands } = client;
+        const prefix = client.permissions.prefix;
 
-        // If a specific command is requested
-        if (args.length > 0) {
+        // Case 1: Help for a specific command
+        if (args[0]) {
             const commandName = args[0].toLowerCase();
             const command = commands.get(commandName);
 
             if (!command) {
-                return message.reply({ content: "❌ That command doesn't exist." });
+                return message.reply(`❌ Command not found: \`${commandName}\`. Use \`${prefix}help\` to see all commands.`);
             }
 
-            // Check if the user has permission to view this command's help
-            if (command.permission === 'owner' && !isOwner) {
-                return message.reply({ content: "❌ You do not have permission to view help for this command." });
-            }
+            const embed = new MessageEmbed()
+                .setColor('#0099ff')
+                .setTitle(`Help: \`${prefix}${command.name}\``)
+                .addField('Description', command.description || 'No description provided.')
+                .addField('Usage', `\`${command.usage || prefix + command.name}\``, true)
+                .addField('Permission', `\`${command.permission || 'Default'}\``, true)
+                .setFooter({ text: `Requested by: ${message.author.tag}`})
+                .setTimestamp();
 
-            let reply = `**Command: `${command.name}`**\n`;
-            reply += `**Description:** ${command.description}\n`;
-            reply += `**Usage:** `${command.usage}`\n`;
-            reply += `**Permission:** ${command.permission === 'owner' ? 'Owner Only' : 'Admin'}\n`;
-
-            return message.reply({ content: reply });
+            return message.reply({ embeds: [embed] });
         }
 
-        // If no specific command is requested, show all available commands grouped by category
-        let reply = 'Here is a list of my commands:\n\n';
-        const categorizedCommands = {};
+        // Case 2: General help, listing all commands by category
+        const helpEmbed = new MessageEmbed()
+            .setColor('#0099ff')
+            .setTitle('Command List')
+            .setDescription(`Here are all the available commands. For more info on a specific command, type \`${prefix}help <command_name>\`.`)
+            .setFooter({ text: `Requested by: ${message.author.tag}`})
+            .setTimestamp();
+            
+        const categories = {};
 
-        commands.forEach(command => {
-            // Check permissions before showing
-            if (command.permission === 'owner' && !isOwner) {
-                return; // Skip owner commands if user is not owner
+        // Group commands by category using the file path
+        for (const command of commands.values()) {
+            // __path is injected by the commandLoader
+            if (command.__path) {
+                const category = path.basename(path.dirname(command.__path));
+                if (!categories[category]) {
+                    categories[category] = [];
+                }
+                categories[category].push(command.name);
             }
-
-            // Categorize by subdirectory path
-            const category = path.basename(path.dirname(command.__path || ''));
-            const categoryName = category.charAt(0).toUpperCase() + category.slice(1);
-
-            if (!categorizedCommands[categoryName]) {
-                categorizedCommands[categoryName] = [];
-            }
-            categorizedCommands[categoryName].push(command);
-        });
-
-        for (const category in categorizedCommands) {
-            reply += `**${category} Commands**\n`;
-            categorizedCommands[category].forEach(cmd => {
-                reply += `  `${prefix}${cmd.name}` - ${cmd.description}\n`;
-            });
-            reply += '\n';
         }
 
-        reply += `\n*You can use `${prefix}help [command name]` to get more info on a specific command.*`;
+        // Add a field for each category to the embed
+        for (const categoryName in categories) {
+            const capitalizedName = categoryName.charAt(0).toUpperCase() + categoryName.slice(1);
+            const commandList = categories[categoryName].map(name => `\`${name}\``).join(', ');
+            helpEmbed.addField(`📂 ${capitalizedName}`, commandList);
+        }
 
-        return message.reply({ content: reply });
+        await message.reply({ embeds: [helpEmbed] });
     }
 };
-
-// We need to inject the path into the command module when loading it.
-// This is a bit of a hack, but it's a clean way to get the category.
-// Let's modify the commandLoader.js to do this.
-// I will do this in the next step. For now, this command is ready.

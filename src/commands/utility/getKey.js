@@ -1,111 +1,69 @@
 'use strict';
 
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-puppeteer.use(StealthPlugin());
+const axios = require('axios');
 
 module.exports = {
     name: 'getkey',
-    description: 'Attempts to fetch an executor key from a given link by analyzing network traffic and page content.',
-    usage: '-getkey <url>',
-    permission: 'admin',
+    description: 'Fetches a key from a given link by analyzing network redirects or page content.',
+    usage: '-getkey <keylink>',
+    permission: 'owner',
 
     /**
      * Executes the getkey command.
-     * @param {Message} message The message object that triggered the command.
+     * @param {import('discord.js-selfbot-v13').Message} message The message object that triggered the command.
      * @param {string[]} args The arguments passed to the command.
-     * @param {Client} client The Discord client instance.
+     * @param {import('discord.js-selfbot-v13').Client} client The Discord client instance.
      */
     async execute(message, args, client) {
-        const url = args[0];
+        const keyLink = args[0];
 
-        if (!url) {
-            return message.reply({ content: `❌ **Usage:** 
-${this.usage}
-` });
+        if (!keyLink) {
+            return message.reply(`❌ **Usage:** \`${this.usage}\``);
         }
 
+        const statusMessage = await message.reply('🔑 **Fetching key...** Please wait.');
+
         try {
-            new URL(url);
-        } catch (error) {
-            return message.reply({ content: '❌ **Invalid URL:** Please provide a valid, full URL (e.g., https://example.com).' });
-        }
-
-        const statusMsg = await message.reply({ content: '🕵️‍♂️ **Analyzing Link...** Launching browser and navigating to page.' });
-
-        let browser;
-        try {
-            browser = await puppeteer.launch({
-                headless: true,
-                args: ['--no-sandbox', '--disable-setuid-sandbox']
-            });
-            const page = await browser.newPage();
-            
-            await statusMsg.edit({ content: '🕵️‍♂️ **Analyzing Link...** Monitoring network requests and waiting for page to load.' });
-
-            let keyFound = null;
-
-            // Monitor network responses for potential keys
-            page.on('response', async (response) => {
-                const request = response.request();
-                if (request.resourceType() === 'xhr' || request.resourceType() === 'fetch') {
-                    try {
-                        const json = await response.json();
-                        // This is a placeholder - we'd need to know what the key looks like in a JSON response
-                        if (json && (json.key || json.token)) {
-                            keyFound = json.key || json.token;
-                        }
-                    } catch (e) {
-                        // Not a json response, ignore
-                    }
+            const response = await axios.get(keyLink, {
+                // Let axios handle redirects by default, but set a timeout.
+                timeout: 15000, 
+                // Mimic a common browser user-agent to avoid being blocked.
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
                 }
             });
 
-            await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
-            
-            if (keyFound) {
-                 await statusMsg.edit({ content: `✅ **Key Found (from network)!**
-
-
-${keyFound}
-
-` });
-                 return;
+            // Strategy 1: Check the final URL after redirects.
+            // This is the most common way key systems pass the key.
+            const finalUrl = response.request.res.responseUrl;
+            if (finalUrl && finalUrl !== keyLink) {
+                // A redirect happened, the final URL is likely the key or contains it.
+                return statusMessage.edit(`✅ **Key Found (from redirect)!**
+\`\`\`${finalUrl}\`\`\``);
             }
 
-            await statusMsg.edit({ content: '🕵️‍♂️ **Analyzing Link...** Network analysis complete. Searching page content...' });
+            // Strategy 2: If no redirect, search the HTML body for a key-like string.
+            // This is a fallback if the key is embedded directly in the page.
+            const body = response.data;
+            if (typeof body === 'string') {
+                // Regex to find a long alphanumeric string (common for keys/tokens).
+                // Looking for 32+ characters, often hex, but can include others.
+                const keyRegex = /([a-zA-Z0-9-]{32,})/;
+                const match = body.match(keyRegex);
 
-            // If no key found in network, search the final page content
-            // This is a generic regex for long alphanumeric strings.
-            const content = await page.content();
-            const keyRegex = /[a-zA-Z0-9_-]{32,}/;
-            const match = content.match(keyRegex);
-
-            if (match) {
-                keyFound = match[0];
-                await statusMsg.edit({ content: `✅ **Key Found (from page content)!**
-
-
-${keyFound}
-
-` });
-            } else {
-                await statusMsg.edit({ content: '❌ **Key Not Found.**
-I analyzed the page and its network traffic but could not identify a key. The site may have changed or the key is in a format I don\'t recognize.' });
+                if (match && match[0]) {
+                    return statusMessage.edit(`✅ **Key Found (in page content)!**
+\`\`\`${match[0]}\`\`\``);
+                }
             }
+
+            // If both strategies fail.
+            return statusMessage.edit('❌ **Key Not Found.** No redirect occurred and no key-like text was found in the page content. The site structure might have changed.');
 
         } catch (error) {
-            console.error("Error during puppeteer execution for -getkey:", error);
-            await statusMsg.edit({ content: `❌ **An Error Occurred:**
-
-
-${error.message}
-
-. This could be due to an invalid link, a CAPTCHA, or a site that is blocking automated requests.` });
-        } finally {
-            if (browser) {
-                await browser.close();
-            }
+            console.error(`[getkey] Error fetching key from ${keyLink}:`, error);
+            return statusMessage.edit(`❌ **An Error Occurred.** Could not fetch data from the link.
+\`\`\`${error.message}\`\`\``);
         }
     }
 };
